@@ -68,18 +68,19 @@ export class ScheduledBackupService implements OnModuleInit {
       timezone, // timeZone
     );
 
-    this.schedulerRegistry.addCronJob('database-backup', job);
-    job.start();
-
     const nextRun = job.nextDate();
+    const nextRunDate =
+      nextRun instanceof Date ? nextRun : (nextRun as any).toJSDate();
+
+    console.log(chalk.green(`[BACKUP] Automatic backup schedule initialized.`));
     console.log(
-      chalk.green(
-        `[BACKUP] Automatic backup schedule initialized. Current server time: ${new Date().toISOString()}`,
+      chalk.cyan(
+        `[BACKUP] Current Server Time: ${new Date().toISOString()} | local(GMT+8): ${this.formatGMT8(new Date())}`,
       ),
     );
     console.log(
       chalk.yellow(
-        `[BACKUP] Next backup scheduled for: ${nextRun.toJSDate().toISOString()} (UTC)`,
+        `[BACKUP] Next run scheduled for: ${nextRunDate.toISOString()} | local(GMT+8): ${this.formatGMT8(nextRunDate)}`,
       ),
     );
   }
@@ -125,6 +126,22 @@ export class ScheduledBackupService implements OnModuleInit {
   }
 
   /**
+   * Helper to format a date to GMT+8 (Asia/Manila)
+   */
+  private formatGMT8(date: Date): string {
+    return date.toLocaleString('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  }
+
+  /**
    * Get backup schedule status
    */
   getScheduleStatus() {
@@ -151,8 +168,25 @@ export class ScheduledBackupService implements OnModuleInit {
       return {
         enabled: true,
         cronExpression: process.env.BACKUP_CRON || '0 2 * * *',
+        timezone: process.env.BACKUP_TIMEZONE || 'UTC',
         nextRun: nextRunStr,
+        nextRunLocal: nextDate
+          ? this.formatGMT8(
+              nextDate instanceof Date
+                ? nextDate
+                : (nextDate as any).toJSDate(),
+            )
+          : 'N/A',
         lastRun: lastRunStr,
+        lastRunLocal: lastDate
+          ? this.formatGMT8(
+              lastDate instanceof Date
+                ? lastDate
+                : (lastDate as any).toJSDate(),
+            )
+          : 'N/A',
+        serverTime: new Date().toISOString(),
+        serverTimeLocal: this.formatGMT8(new Date()),
       };
     } catch (error) {
       console.error('[BACKUP] Status check failed:', error);
