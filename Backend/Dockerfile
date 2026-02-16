@@ -26,9 +26,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
-# Copy built artifacts and static folder
+# Copy built artifacts
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/static ./static
 
 # Railway provides PORT
 ENV PORT=3000
