@@ -44,8 +44,13 @@ export class ScheduledBackupService implements OnModuleInit {
         const backupPath = await this.backupService.createFullBackup(client);
 
         console.log(
-          chalk.green(`[BACKUP] Scheduled backup completed: ${backupPath}`),
+          chalk.green(
+            `[BACKUP] Scheduled backup completed locally: ${backupPath}`,
+          ),
         );
+
+        // Upload to Supabase
+        await this.backupService.uploadToSupabase(backupPath);
 
         // Clean old backups (keep last 30 for daily backups)
         await this.backupService.cleanOldBackups(30);
@@ -71,8 +76,11 @@ export class ScheduledBackupService implements OnModuleInit {
       const backupPath = await this.backupService.createFullBackup(client);
 
       console.log(
-        chalk.green(`[BACKUP] Manual backup completed: ${backupPath}`),
+        chalk.green(`[BACKUP] Manual backup completed locally: ${backupPath}`),
       );
+
+      // Upload to Supabase
+      await this.backupService.uploadToSupabase(backupPath);
 
       return backupPath;
     } catch (error) {

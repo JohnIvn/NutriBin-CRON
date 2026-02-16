@@ -25,10 +25,15 @@ export class BackupController {
       const client = this.databaseService.getClient();
       const backupPath = await this.backupService.createFullBackup(client);
 
+      // Upload to Supabase storage
+      const supabaseFile =
+        await this.backupService.uploadToSupabase(backupPath);
+
       return {
         success: true,
-        message: 'Database backup created successfully',
+        message: 'Database backup created and stored successfully',
         backupPath,
+        supabaseFile: supabaseFile || 'Failed to upload to Supabase',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {

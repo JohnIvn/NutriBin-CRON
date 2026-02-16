@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase storage helper service
@@ -24,7 +25,8 @@ type SupabaseFileBody =
   | NodeJS.ReadableStream
   | string;
 
-class SupabaseService {
+@Injectable()
+export class SupabaseService {
   private client: ReturnType<typeof createClient>;
 
   constructor() {
@@ -107,14 +109,34 @@ class SupabaseService {
     opts?: { contentType?: string; upsert?: boolean },
   ) {
     if (!bucket || !path) throw new Error('bucket and path are required');
-    const { data, error } = await this.client.storage
-      .from(bucket)
-      .upload(path, file, {
-        contentType: opts?.contentType,
-        upsert: opts?.upsert ?? true,
-      });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await this.client.storage
+        .from(bucket)
+        .upload(path, file, {
+          contentType: opts?.contentType,
+          upsert: opts?.upsert ?? true,
+        });
+      if (error) throw error;
+      return data;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      if (
+        /bucket not found/i.test(message) ||
+        /Bucket not found/i.test(message)
+      ) {
+        await this.ensureBucketExists(bucket, true);
+        const { data: retryData, error: retryError } = await this.client.storage
+          .from(bucket)
+          .upload(path, file, {
+            contentType: opts?.contentType,
+            upsert: opts?.upsert ?? true,
+          });
+        if (retryError) throw retryError;
+        return retryData;
+      }
+
+      throw err;
+    }
   }
 
   // Remove object at path
@@ -144,9 +166,6 @@ class SupabaseService {
     return data.signedUrl;
   }
 }
-
-const supabaseService = new SupabaseService();
-export default supabaseService;
 
 // Example usage in other services (do not uncomment here):
 // import supabaseService from '../storage/supabase.service';

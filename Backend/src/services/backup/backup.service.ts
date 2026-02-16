@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { promises as fsPromises } from 'fs';
 import chalk from 'chalk';
+import { SupabaseService } from '../storage/supabase.service';
 
 type TableInfo = { table_name: string };
 type ColumnInfo = {
@@ -27,7 +28,7 @@ type ForeignKeyInfo = {
 export class BackupService {
   private backupDir = path.join(__dirname, '..', '..', '..', 'backups');
 
-  constructor() {
+  constructor(private readonly supabaseService: SupabaseService) {
     // Ensure backup directory exists
     if (!fs.existsSync(this.backupDir)) {
       fs.mkdirSync(this.backupDir, { recursive: true });
@@ -117,6 +118,40 @@ export class BackupService {
     } catch (error) {
       console.error(chalk.red('[BACKUP] Error creating backup file:'), error);
       throw error;
+    }
+  }
+
+  /**
+   * Uploads a backup file to Supabase storage
+   */
+  async uploadToSupabase(backupPath: string): Promise<string | null> {
+    const bucket = process.env.SUPABASE_BACKUP_BUCKET || 'backups';
+    const fileName = path.basename(backupPath);
+    const supabasePath = `backup/${fileName}`;
+
+    console.log(
+      chalk.cyan(`[BACKUP] Uploading backup to Supabase: ${supabasePath}`),
+    );
+
+    try {
+      const fileStream = fs.createReadStream(backupPath);
+      const data = await this.supabaseService.uploadFile(
+        bucket,
+        supabasePath,
+        fileStream,
+        {
+          contentType: 'application/sql',
+          upsert: true,
+        },
+      );
+      console.log(chalk.green(`[BACKUP] Successfully uploaded to Supabase`));
+      return fileName;
+    } catch (error) {
+      console.error(
+        chalk.red('[BACKUP] Failed to upload backup to Supabase:'),
+        error,
+      );
+      return null;
     }
   }
 
