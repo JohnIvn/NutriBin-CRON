@@ -25,6 +25,7 @@ export class ScheduledBackupService implements OnModuleInit {
    */
   scheduleBackups() {
     const cronExpression = process.env.BACKUP_CRON || '0 2 * * *'; // 2 AM daily
+    const timezone = process.env.BACKUP_TIMEZONE || 'UTC';
     const enabled = process.env.BACKUP_ENABLED !== 'false'; // Enabled by default
 
     if (!enabled) {
@@ -33,36 +34,54 @@ export class ScheduledBackupService implements OnModuleInit {
     }
 
     console.log(
-      chalk.cyan(`[BACKUP] Scheduling automatic backups: ${cronExpression}`),
+      chalk.cyan(
+        `[BACKUP] Scheduling automatic backups: ${cronExpression} (${timezone})`,
+      ),
     );
 
-    const job = new CronJob(cronExpression, async () => {
-      console.log(chalk.yellow('[BACKUP] Running scheduled backup...'));
+    const job = new CronJob(
+      cronExpression,
+      async () => {
+        console.log(chalk.yellow('[BACKUP] Running scheduled backup...'));
 
-      try {
-        const client = this.databaseService.getClient();
-        const backupPath = await this.backupService.createFullBackup(client);
+        try {
+          const client = this.databaseService.getClient();
+          const backupPath = await this.backupService.createFullBackup(client);
 
-        console.log(
-          chalk.green(
-            `[BACKUP] Scheduled backup completed locally: ${backupPath}`,
-          ),
-        );
+          console.log(
+            chalk.green(
+              `[BACKUP] Scheduled backup completed locally: ${backupPath}`,
+            ),
+          );
 
-        // Upload to Supabase
-        await this.backupService.uploadToSupabase(backupPath);
+          // Upload to Supabase
+          await this.backupService.uploadToSupabase(backupPath);
 
-        // Clean old backups (keep last 30 for daily backups)
-        await this.backupService.cleanOldBackups(30);
-      } catch (error) {
-        console.error(chalk.red('[BACKUP] Scheduled backup failed:'), error);
-      }
-    });
+          // Clean old backups (keep last 30 for daily backups)
+          await this.backupService.cleanOldBackups(30);
+        } catch (error) {
+          console.error(chalk.red('[BACKUP] Scheduled backup failed:'), error);
+        }
+      },
+      null, // onComplete
+      false, // start (we'll start manually)
+      timezone, // timeZone
+    );
 
     this.schedulerRegistry.addCronJob('database-backup', job);
     job.start();
 
-    console.log(chalk.green('[BACKUP] Automatic backup schedule initialized'));
+    const nextRun = job.nextDate();
+    console.log(
+      chalk.green(
+        `[BACKUP] Automatic backup schedule initialized. Current server time: ${new Date().toISOString()}`,
+      ),
+    );
+    console.log(
+      chalk.yellow(
+        `[BACKUP] Next backup scheduled for: ${nextRun.toJSDate().toISOString()} (UTC)`,
+      ),
+    );
   }
 
   /**
