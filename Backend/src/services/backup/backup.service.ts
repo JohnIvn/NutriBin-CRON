@@ -134,11 +134,11 @@ export class BackupService {
     );
 
     try {
-      const fileStream = fs.createReadStream(backupPath);
+      const fileBuffer = fs.readFileSync(backupPath);
       const data = await this.supabaseService.uploadFile(
         bucket,
         supabasePath,
-        fileStream,
+        fileBuffer,
         {
           contentType: 'application/sql',
           upsert: true,

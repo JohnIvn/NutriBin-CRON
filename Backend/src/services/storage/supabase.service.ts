@@ -109,34 +109,19 @@ export class SupabaseService {
     opts?: { contentType?: string; upsert?: boolean },
   ) {
     if (!bucket || !path) throw new Error('bucket and path are required');
-    try {
-      const { data, error } = await this.client.storage
-        .from(bucket)
-        .upload(path, file, {
-          contentType: opts?.contentType,
-          upsert: opts?.upsert ?? true,
-        });
-      if (error) throw error;
-      return data;
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
-      if (
-        /bucket not found/i.test(message) ||
-        /Bucket not found/i.test(message)
-      ) {
-        await this.ensureBucketExists(bucket, true);
-        const { data: retryData, error: retryError } = await this.client.storage
-          .from(bucket)
-          .upload(path, file, {
-            contentType: opts?.contentType,
-            upsert: opts?.upsert ?? true,
-          });
-        if (retryError) throw retryError;
-        return retryData;
-      }
 
-      throw err;
-    }
+    // Ensure bucket exists first to avoid retry issues with streams
+    await this.ensureBucketExists(bucket, true);
+
+    const { data, error } = await this.client.storage
+      .from(bucket)
+      .upload(path, file, {
+        contentType: opts?.contentType,
+        upsert: opts?.upsert ?? true,
+      });
+
+    if (error) throw error;
+    return data;
   }
 
   // Remove object at path
