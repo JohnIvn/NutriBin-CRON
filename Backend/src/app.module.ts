@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -10,7 +11,7 @@ import { SupabaseService } from './services/storage/supabase.service';
 import { BackupController } from './controllers/backup.controller';
 
 @Module({
-  imports: [],
+  imports: [ScheduleModule.forRoot()],
   controllers: [AppController, BackupController],
   providers: [
     AppService,
