@@ -47,6 +47,15 @@ export class BackupController {
   }
 
   /**
+   * Gets the current backup schedule status
+   * GET /backup/status
+   */
+  @Get('status')
+  getBackupStatus() {
+    return this.scheduledBackupService.getScheduleStatus();
+  }
+
+  /**
    * Lists all available backups
    * GET /backup/list
    */
