@@ -68,6 +68,12 @@ export class ScheduledBackupService implements OnModuleInit {
       timezone, // timeZone
     );
 
+    // Add to scheduler registry so we can manage it later
+    this.schedulerRegistry.addCronJob('database-backup', job);
+
+    // Start the job
+    job.start();
+
     const nextRun = job.nextDate();
     const nextRunDate =
       nextRun instanceof Date ? nextRun : (nextRun as any).toJSDate();
